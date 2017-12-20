@@ -44,7 +44,7 @@ end
   
   %Send data for Binary Prediction and Ternary Prediction functions
   if predictionchoice == 'B'
-    disp('In if.');
+    %disp('In if.');
     %BinaryPrediction; %calls script file
     BPrediction(polymerchoice,phasechoice,solventchoice);
   elseif predictionchoice =='T'
@@ -53,9 +53,9 @@ end
     
   %% Binary Prediction
 function BPrediction(polymerchoice,phasechoice,solventchoice)
-  disp('In BPrediction')
+  %disp('In BPrediction')
 
-disp(phasechoice)
+%disp(phasechoice)
 %display user choice of polymer based on id chosen using xlsread
 [num,txt,raw] = xlsread('Interaction Parameters Sheet.xlsx','PolymerNames','A1:A47');
 for i = 1:47
@@ -93,6 +93,7 @@ else
     for i = 1:totalnumberofsubgroups
     idsubgroups(i) = input(sprintf('Please enter the id number of subgroup #%d: ',i));
     specificnumberofsubgroups(i) = input(sprintf('Please enter the number of times that subgroup appears in your polymer molecule:'));
+    %disp(specificnumberofsubgroups(i))
     subgroupcounter = subgroupcounter+1; %determines how many subgroups user entered to determine size of 2D array in referencevolumeparameter function
     end
 end
@@ -104,6 +105,7 @@ subgrouparray = cat(1,idsubgroups,specificnumberofsubgroups); %concatenates thes
 %sends array to function that calculates vi*
 %ReferenceVolumeParameter;
 refvolumeparameter(subgrouparray,temperature,subgroupcounter)
+epsilonii(subgrouparray,temperature,subgroupcounter)
 %endfunction
 
 end
@@ -135,13 +137,60 @@ Rk = zeros(1,length(Rkvaluescell));
      Rk(i) = tempRk(1) + tempRk(2)*(temperature/reftemp) + tempRk(3)*(temperature/reftemp)^2; %loop through the specific cell and calculate its rk value  
  end
  Rk = Rk ./1000;
- disp(Rk)
+ disp('The individual subgroup parameters will appear below')
+ disp('')
+ fprintf('Rk = %f\n',Rk)
+ disp('Note: Each line of the above output corresponds to the Rk values for each subgroup')
  
  %calculation of vi*
  vi = sum(subgrouparray(2,:) .* Rk);
  fprintf('vi* = %f\n',vi)
  
 end
-%% calculating ?ij
+%% calculating epsilonii
+function epsilonii(subgrouparray,temperature,specificnumberofsubgroups)
+reftemp = 273.15;
+%calculate ekk values first
+ekvaluescell = {length(subgrouparray),1};
+[num,txt,excelvalues] = xlsread('Interaction Parameters Sheet.xlsx','Subgroup Parameters','C1:E4');
+%disp(excelvalues)
+for i = 1:10 %loop through subgroupvalues
+    for j = 1:length(subgrouparray)
+        if i == subgrouparray(1,j)
+            ekvaluescell{j} = cell2mat(excelvalues(subgrouparray(1,j),:));
+        end
+    end
+end
+
+ek = zeros(1,length(ekvaluescell));
+%perform ek calculation
+for i=1:length(ekvaluescell)
+    tempek = ekvaluescell{i};
+    %disp(tempek)
+    ek(i) = tempek(1)+ tempek(2) * (temperature/reftemp) + tempek(3) * (temperature/reftemp)^2;
+end
+disp('')
+fprintf('ek = %f\n',ek)
+disp('Note: Each line of the above output corresponds to the ek values for each subgroup')
+%calculating Theta(k,i)
+Qkvalues = {length(subgrouparray),1};
+[num,txt,excelvalues] = xlsread('Interaction Parameters Sheet.xlsx','Subgroup Parameters','I1:I23');
+%disp(excelvalues)
+for i = 1:10
+    for j = 1:length(subgrouparray)
+        if i == subgrouparray(1,j)
+            Qkvalues(j) = excelvalues(subgrouparray(1,j),1);
+        end
+    end
+end
+Qkvalues = cell2mat(Qkvalues);
+Thetak = (subgrouparray(2,:) .* Qkvalues)/(sum(subgrouparray(2,:) .* Qkvalues));
+disp('')
+fprintf('Theta(i,k) = %f\n',Thetak)
+disp('Note: Each line of the above output corresponds to the Theta(i,k) values for each subgroup')
+epsilon = sum(Thetak .* ek);
+fprintf('epsilonii = %f \n',epsilon)
+
+end
 
   
