@@ -124,8 +124,6 @@ refvolumeparameter(polymertemparray,temperature,polymernumofsubgrouparray,solven
 epsilonii(polymertemparray,temperature,polymernumofsubgrouparray,solventtemparray,solventnumofsubgrouparray)
 %endfunction
 
-%Calculate kij
-kij(polymertemparray,temperature,polymernumofsubgrouparray,solventtemparray,solventnumofsubgrouparray);
 
 end
 %% calculating vi*
@@ -169,8 +167,8 @@ Rksolvent = zeros(1,length(solventRkvaluescell));
  Rkpolymers = Rkpolymers ./1000;
  disp('The individual subgroup parameters for the polymers will appear below')
  fprintf('Rk = %f\n',Rkpolymers)
- disp('Note: Each line of the above output corresponds to the Rk values for each subgroup')
- 
+%  disp('Note: Each line of the above output corresponds to the Rk values for each subgroup')
+%  
  for i = 1:2
      tempRk=solventRkvaluescell{i};
      Rksolvent(i) = tempRk(1) + tempRk(2)*(temperature/reftemp) + tempRk(3)*(temperature/reftemp)^2;
@@ -179,7 +177,7 @@ Rksolvent = zeros(1,length(solventRkvaluescell));
  Rksolvent = Rksolvent ./1000;
  disp('The individual subgroup parameters for the solvent will appear below')
  fprintf('Rk = %f\n',Rksolvent)
- disp('Note: Each line of the above output corresponds to the Rk values for each subgroup')
+%  disp('Note: Each line of the above output corresponds to the Rk values for each subgroup')
  
  %calculation of vi*
  
@@ -233,7 +231,7 @@ end
 polyzeroarray = zeros(1,2);
 ekpoly = [ekpolymer, polyzeroarray];
 disp('')
-fprintf('ek = %f\n',ekpoly)
+ fprintf('ek polymer = %f\n',ekpoly)
 solvzeroarray = zeros(1,3);
 disp('Note: Each line of the above output corresponds to the ek values for each subgroup in the polymer')
 eksolv = [eksolvent,solvzeroarray];
@@ -249,7 +247,7 @@ for i = 1:23
     for j = 1:length(polymertemparray)
         if i == polymertemparray{1,j}(1,2)
             if polymertemparray{1,j}(1,2) == 0.00
-                polymerQkvalues(j) = 0;
+                polymerQkvalues{j} = 0;
             else
             polymerQkvalues(j) = excelvalues(polymertemparray{1,j}(1,2),1);
             end
@@ -269,60 +267,111 @@ for i = 1:23
     end
 end
 
-zeroarraypolymer = zeros(1,2); %since size of Qkvalues and numofsubgrouparray are different,
+%zeroarraypolymer = zeros(1,2); %since size of Qkvalues and numofsubgrouparray are different,
 %concatenate 2 empty spaces onto end of Qkvalues to allow for matrix operations
-polymerQkvalues = [polymerQkvalues zeroarraypolymer]; %concatenate these two vectors
+polymerQkvalues = [polymerQkvalues zeros(1,2)];
+%disp(polymerQkvalues)
 polymerQkvalues = cell2mat(polymerQkvalues);
-
+%polymerQkvalues = [polymertemparray polymerQkvalues]; %concatenate these two vectors
 zeroarraysolvent = zeros(1,3);
 solventQkvalues = [solventQkvalues zeroarraysolvent]; %concatenate these two vectors
 solventQkvalues = cell2mat(solventQkvalues);
 
 Thetakpolymer = (polymernumofsubgrouparray .* polymerQkvalues)/(sum(polymernumofsubgrouparray .* polymerQkvalues));
-fprintf('Theta(i,k) = %f\n',Thetakpolymer)
-disp('Note: Each line of the above output corresponds to the Theta(i,k) values for each subgroup in the polymer')
+fprintf('Theta(i,k) polymer = %f\n',Thetakpolymer)
+% disp('Note: Each line of the above output corresponds to the Theta(i,k) values for each subgroup in the polymer')
 epsilonpolymer = sum(Thetakpolymer .* ekpoly);
 fprintf('epsiloniipolymer = %f \n',epsilonpolymer)
+
+Thetaksolvent = (solventnumofsubgrouparray .* solventQkvalues)/(sum(solventnumofsubgrouparray .* solventQkvalues));
+fprintf('Theta(i,k) solvent = %f\n',Thetaksolvent)
+epsilonsolvent = sum(Thetaksolvent .* eksolv);
+fprintf('epsiloniisolvent = %f \n',epsilonsolvent)
 
 
 
 Thetaksolvent = (solventnumofsubgrouparray .* solventQkvalues)/(sum(solventnumofsubgrouparray .* solventQkvalues));
-fprintf('Theta(i,k) = %f\n',Thetaksolvent)
-disp('Note: Each line of the above output corresponds to the Theta(i,k) values for each subgroup in the solvent'))
+% fprintf('Theta(i,k) = %f\n',Thetaksolvent)
+% disp('Note: Each line of the above output corresponds to the Theta(i,k) values for each subgroup in the solvent');
 epsilonsolvent = sum(Thetaksolvent .* eksolv);
-fprintf('epsiloniisolvent = %f \n',epsilonsolvent)
+% fprintf('epsiloniisolvent = %f \n',epsilonsolvent)
+
+%Calculate kij
+kij(polymertemparray,temperature,polymernumofsubgrouparray,solventtemparray,solventnumofsubgrouparray,polymerQkvalues,solventQkvalues);
+
 
 end
 %% determining which method to calculate kij
-function kij(polymertemparray,temperature,numofsubgrouparray)
+function kij(polymertemparray,temperature,polymernumofsubgrouparray,solventtemparray,solventnumofsubgrouparray,polymerQkvalues,solventQkvalues)
 disp('There are two methods to calculate kij')
 disp('1. kij is based on surface area fractions of group m in the mixture (Lee-Danner method).')
 disp('2. kij is based solely on the interactions of groups of unlike species (Hamedi et al. method)')
 
-kijmethodselection = input('Which method would you like to use? Please enter 1 or 2 6');
+kijmethodselection = input('Which method would you like to use? Please enter 1 or 2:');
 
 if(kijmethodselection == 1)
-    kijmethod1(polymertemparray,temperature,numofsubgrouparray);
+    kijmethod1(polymertemparray, polymernumofsubgrouparray,solventtemparray,solventnumofsubgrouparray,temperature,polymerQkvalues,solventQkvalues);
 elseif(kijmethodselection==2)
-    kijmethod2(polymertemparray,temperature,numofsubgrouparray);
+    kijmethod2(polymertemparray, polymernumofsubgrouparray,solventtemparray,solventnumofsubgrouparray,temperature,polymerQkvalues,solventQkvalues);
 end
 
 end
 
 %% calculating kij using Lee-Danner Method
-function kijmethod1(polymertemparray,temperature,numofsubgrouparray)
+function kijmethod1(polymertemparray, polymernumofsubgrouparray,solventtemparray,solventnumofsubgrouparray,temperature,polymerQkvalues,solventQkvalues)
 disp('You have chosen the Lee-Danner method for calculating kij')
 
+combinedsolpolyarray = [polymertemparray; solventtemparray];
+disp('combined sol polymer array')
+% for i = 1:10
+%     disp(combinedsolpolyarray{i})
+% end
+
+%disp(polymerQkvalues)
+
+
+for j = 1:5
+     polymeridarray(j) = polymertemparray{1,j}(1,2); %move the subgroup id of each subgroup into a separate array
+end
+
+polyQkarray = vertcat(polymeridarray,polymernumofsubgrouparray,polymerQkvalues);
+%disp(polyQkarray)
+
+for j = 1:5
+     solventidarray(j) = solventtemparray{1,j}(1,2); %move the numbers of each subgroup into a separate array
+end
+
+solvQkarray = vertcat(solventidarray,solventnumofsubgrouparray,solventQkvalues);
+%disp(solvQkarray)
+
+
+combinedarray = horzcat(polyQkarray,solvQkarray);
+disp(combinedarray)
+%temp = zeros(3,1);
+index=0;
+x = combinedarray(1,:);
+disp(length(combinedarray))
+disp(x)
+ for i = 1:23   
+    for k = 1:length(combinedarray)
+        %disp(combinedarray(1,k))
+        if i == x(k)
+            %disp('in')
+            index = find(x == i);
+            %disp(index)
+            temp{i} = combinedarray(1:3,index);
+            
+                
+        end
+            %disp('not in if')
+    end
+ end
+
+    
 end
 %% calculating kij using Hamedi et al. method
-function kijmethod2(polymertemparray,temperature,numofsubgrouparray)
+function kijmethod2(polymertemparray, polymernumofsubgrouparray,solventtemparray,solventnumofsubggrouparray,temperature,polymerQkvalues,solventQkvalues)
 disp('You have chosen the Hamedi et al. method for calculating kij')
-
-end
-%% calculating alpha mn
-function alphamn(subgrouparray,temperature,specificnumberofgroups)
-
-
 
 end
 
